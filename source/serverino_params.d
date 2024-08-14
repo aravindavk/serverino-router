@@ -11,7 +11,8 @@ import std.string;
 
 import vibe.data.json;
 import serverino;
-import http_status;
+
+public import http_status;
 
 alias Routes = void function(Request, Output)[string];
 alias HandlerFunc = void function(Request, Output);
