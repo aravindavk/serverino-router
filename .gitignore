@@ -1,0 +1,17 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/serverino-params
+serverino-params.so
+serverino-params.dylib
+serverino-params.dll
+serverino-params.a
+serverino-params.lib
+serverino-params-test-*
+*.exe
+*.pdb
+*.o
+*.obj
+*.lst
+*.a

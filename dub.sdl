@@ -1,0 +1,8 @@
+name "serverino-params"
+description "Ruby on Rails style params handling"
+authors "Aravinda VK <mail@aravindavk.in>"
+copyright "Copyright © 2024, Aravinda VK <mail@aravindavk.in>"
+license "MIT"
+dependency "serverino" version="~>0.7.10"
+dependency "vibe-serialization" version="~>1.0.4"
+dependency "http-status-codes" path="../http-status-codes"
