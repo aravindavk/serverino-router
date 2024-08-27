@@ -239,7 +239,7 @@ void setStartTime()
 }
 
 @endpoint
-void allRoutesHandler(Request request, Output output)
+void routesHandler(Request request, Output output)
 {
     setStartTime;
 
