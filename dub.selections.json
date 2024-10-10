@@ -1,7 +1,9 @@
 {
 	"fileVersion": 1,
 	"versions": {
-		"serverino": "0.7.10",
+		"http-status-codes": {"version":"f51b01c64047db4c3bcf4fc78d72d97bf6a4941a","repository":"git+https://github.com/aravindavk/http-status-codes.git"},
+		"json-serialization": {"version":"b63a83152aedbb79e3d8e922b599d9af6ef694f6","repository":"git+https://github.com/aravindavk/json-serialization-d.git"},
+		"serverino": "0.7.11",
 		"stdx-allocator": "2.77.5",
 		"vibe-container": "1.3.1",
 		"vibe-serialization": "1.0.4"

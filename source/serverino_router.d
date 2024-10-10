@@ -286,27 +286,13 @@ class ParamsParseException : Exception
 
 string nullableType(T)()
 {
-    alias types = AliasSeq!(
-        bool,
-        short,
-        ushort,
-        int,
-        uint,
-        long,
-        ulong,
-        char,
-        float,
-        double,
-        real,
-        string
-    );
+    import std.string;
+    string type = T.stringof;
+    auto parts = type.split("!");
+    if (parts.length > 1)
+        return parts[1];
 
-    foreach(t; types)
-    {
-        if (is(T == Nullable!t))
-            return t.stringof;
-    }
-    return "string";
+    return parts[0];
 }
 
 Nullable!T getParam(T)(Request req, string key, JSONValue bodyParams = JSONValue(), string[string] pathParams = string[string].init)
@@ -381,52 +367,48 @@ T parseParams(T)(Request req)
             throw new ParamsParseException("Invalid JSON");
     }
 
-    static foreach(memberName; __traits(allMembers, T))
+    alias fieldTypes = FieldTypeTuple!(T);
+    alias fieldNames = FieldNameTuple!(T);
+
+    static foreach(idx, fieldName; fieldNames)
     {
-        // New scope to avoid already defined errors
-        // when used variables during compile time
+        static if (!isParamIgnored!(T, fieldName))
         {
-            static if (memberName != "Monitor" && !isSomeFunction!(__traits(getMember, params, memberName)))
-            {
-                static if (!isParamIgnored!(T, memberName))
+            // Param name same as memberName unless @paramName
+            // attribute added to the member.
+            enum name = getParamName!(T, fieldName);
+
+            static if(__traits(hasMember, __traits(getMember, params, memberName), "isNull"))
+                enum type = nullableType!(fieldTypes[idx]);
+            else
+                enum type = fieldTypes[idx].stringof;
+
+            // Example conversion:
+            // try
+            // {
+            //     auto param = getParam!(int)(req, "page", bodyJson, pathParams);
+            //     if (!param.isNull)
+            //         params.page = param.get;
+            // }
+            // catch (Exception)
+            // {
+            //     throw new ParamsParseException("Failed to parse \"page\". Invalid content");
+            // }
+            mixin(`
+                try
                 {
-                    // Param name same as memberName unless @paramName
-                    // attribute added to the member.
-                    enum name = getParamName!(T, memberName);
-
-                    // Convert the PG type to this type
-                    static if(__traits(hasMember, __traits(getMember, params, memberName), "isNull"))
-                        enum type = nullableType!(typeof(__traits(getMember, params, memberName)));
-                    else
-                        enum type = typeof(__traits(getMember, params, memberName)).stringof;
-
-                    // Example conversion:
-                    // try
-                    // {
-                    //     auto param = getParam!(int)(req, "page", bodyJson, pathParams);
-                    //     if (!param.isNull)
-                    //         params.page = param.get;
-                    // }
-                    // catch (Exception)
-                    // {
-                    //     throw new ParamsParseException("Failed to parse \"page\". Invalid content");
-                    // }
-                    mixin(`
-                        try
-                        {
-                            auto param = getParam!(` ~ type ~ `)(req, "` ~ name ~ `", bodyJson, pathParams);
-                            if (!param.isNull)
-                                params.` ~ memberName ~ ` = param.get;
-                        }
-                        catch (Exception)
-                        {
-                            throw new ParamsParseException("Failed to parse \"` ~ name ~ `\". Invalid content");
-                        }
-                    `);
+                    auto param = getParam!(` ~ type ~ `)(req, "` ~ name ~ `", bodyJson, pathParams);
+                    if (!param.isNull)
+                         params.` ~ fieldName ~ ` = param.get;
                 }
-            }
+                catch (Exception)
+                {
+                    throw new ParamsParseException("Failed to parse \"` ~ name ~ `\". Invalid content");
+                }
+            `);
         }
+
     }
- 
+
     return params;
 }
