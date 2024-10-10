@@ -1,9 +1,9 @@
 # Serverino Routing and Params helpers
 
-Add `serverino-params` to your project by running,
+Add `serverino-router` to your project by running,
 
 ```
-dub add serverino-params
+dub add serverino-router
 ```
 
 ## Routing
