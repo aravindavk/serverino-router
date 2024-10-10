@@ -8,9 +8,10 @@ import std.logger;
 import std.algorithm.searching : canFind;
 import std.datetime : Clock, UTC, SysTime;
 import std.string;
+import std.json;
 
-import vibe.data.json;
 import serverino;
+import json_serialization;
 
 public import http_status;
 
@@ -64,7 +65,7 @@ void writeJsonBody(T)(Output output, T data, HttpStatus status = HttpStatus.ok)
 {
     output.status = status;
     output.setContentType("application/json");
-    output.write(serializeToJsonString(data));
+    output.write(data.serializeToJSONValueString);
 }
 
 bool validParamType(string param, string type)
@@ -127,14 +128,19 @@ Nullable!(string[string]) matchedPathParams(string pattern, string path)
         else if (p[0] == '*')
         {
             if (p.length > 1)
+            {
                 // If name is provided with *, then collect
                 // the rest of the path parts as current param
-                params[p[1..$]] = pathParts[idx..$].join("/");
+                auto param = pathParts[idx..$].join("/");
+                if (param.empty)
+                    return Nullable!(string[string]).init;
 
+                params[p[1..$]] = param;
+            }
             // No need to compare the rest of the path parts
             break;
         }
-        else if(p != pathParts[idx])
+        else if(pathParts.length <= idx || p != pathParts[idx])
             return Nullable!(string[string]).init;
     }
 
@@ -144,6 +150,7 @@ Nullable!(string[string]) matchedPathParams(string pattern, string path)
 bool pathMatch(const(Request) req, string pattern)
 {
     auto data = matchedPathParams(pattern, req.path);
+
     if (!data.isNull)
         pathParams = data.get;
 
@@ -227,8 +234,6 @@ void findRouteHandler(Request request, Output output, Routes staticRoutes, Route
         if (request.pathMatch(route.key))
             return (*(route.value))(request, output);
     }
-
-    return;
 }
 
 void setStartTime()
@@ -304,18 +309,18 @@ string nullableType(T)()
     return "string";
 }
 
-Nullable!T getParam(T)(Request req, string key, Json bodyParams = Json.emptyObject, string[string] pathParams = string[string].init)
+Nullable!T getParam(T)(Request req, string key, JSONValue bodyParams = JSONValue(), string[string] pathParams = string[string].init)
 {
     Nullable!T value;
     auto pathParamValue = key in pathParams;
-    auto bodyParam = bodyParams[key];
+    auto bodyParam = key in bodyParams;
 
     if (pathParamValue !is null)
         value = (*pathParamValue).to!(T);
     else if (req.get.has(key))
         value = req.get.read(key).to!(T);
-    else if (bodyParam.type != Json.Type.undefined)
-        value = bodyParam.to!(T);
+    else if (bodyParam !is null)
+        value = (*bodyParam).get!(T);
     else if (req.post.has(key))
         value = req.post.read(key).to!(T);
     else if (req.form.has(key))
@@ -367,11 +372,11 @@ T parseParams(T)(Request req)
     else
         T params = new T;
 
-    auto bodyJson = Json.emptyObject;
+    JSONValue bodyJson;
     if (req.body.contentType == "application/json")
     {
         try
-            bodyJson = parseJsonString(req.body.data.to!string);
+            bodyJson = parseJSON(req.body.data.to!string);
         catch (Exception)
             throw new ParamsParseException("Invalid JSON");
     }
